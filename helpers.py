@@ -51,7 +51,7 @@ def load_data(mat_file_path, width=28, height=28, max_=None, verbose=True):
     if max_ == None:
         max_ = len(mat['dataset'][0][0][0][0][0][0])
     training_images = mat['dataset'][0][0][0][0][0][0][:max_]
-    training_labels = mat['dataset'][0][0][0][0][0][1][:max_]-1 #shift matlab indicies to start from 0
+    training_labels = mat['dataset'][0][0][0][0][0][1][:max_] #shift matlab indicies to start from 0
 
     # Load testing data
     if max_ == None:
@@ -59,7 +59,7 @@ def load_data(mat_file_path, width=28, height=28, max_=None, verbose=True):
     else:
         max_ = int(max_ / 6)
     testing_images = mat['dataset'][0][0][1][0][0][0][:max_]
-    testing_labels = mat['dataset'][0][0][1][0][0][1][:max_]-1 #shift matlab indicies to start from 0
+    testing_labels = mat['dataset'][0][0][1][0][0][1][:max_] #shift matlab indicies to start from 0
 
     # Reshape training data to be valid
     if verbose == True: _len = len(training_images)

@@ -163,18 +163,18 @@ def train_student(model, model_label, training_data, teacher_model_path,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(usage='A training program for classifying the EMNIST dataset')
     parser.add_argument('-f', '--file', type=str, help='Path .mat file data',
-                        required = True) #default='data/matlab/emnist-letters.mat')
+                        required=True) #default='data/matlab/emnist-digits.mat'
     parser.add_argument('-m', '--model', type=str, help='model to be trained (cnn, mlp or student).'
                                                         ' If student is selected than path to pretrained teacher must be specified in --teacher parameter',
-                        required = True) #default='cnn')
+                        required=True)
     parser.add_argument('-t', '--teacher', type=str, help='path to .h5 file with weight of pretrained teacher model'
                                                           ' (e.g. bin/cnn_64_128_1024_30model.h5)',
-                        default='bin/cnn_64_128_1024_30model.h5')
+                        default='checkpoints/10cnn_32_64_128_12.h5')
 
     parser.add_argument('--width', type=int, default=28, help='Width of the images')
     parser.add_argument('--height', type=int, default=28, help='Height of the images')
     parser.add_argument('--max', type=int, default=None, help='Max amount of data to use')
-    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs to train on')
+    parser.add_argument('--epochs', type=int, default=12, help='Number of epochs to train on')
     #parser.add_argument('--verbose', action='store_true', default=False, help='Enables verbose printing')
     args = parser.parse_args()
 
@@ -185,20 +185,20 @@ if __name__ == '__main__':
     training_data = load_data(args.file, width=args.width, height=args.height, max_=args.max, verbose=True) #args.verbose)
 
     if args.model=='cnn':
-        label = 'cnn_%d_%d_%d_%d' % (64, 128, 1024, args.epochs)
+        label = '10cnn_%d_%d_%d' % (32, 128, args.epochs)
         model = build_cnn(training_data, width=args.width, height=args.height, verbose=True) #args.verbose)
         train(model, label, training_data, epochs=args.epochs)
     elif args.model=='mlp':
-        label = 'mlp_%d_%d' % (512, args.epochs)
+        label = '10mlp_%d_%d' % (32, args.epochs)
         model = build_mlp(training_data, width=args.width, height=args.height, verbose=True) #args.verbose)
         train(model, label, training_data, epochs=args.epochs)
     elif args.model=='student':
         model = build_mlp(training_data, width=args.width, height=args.height, verbose=True)  # args.verbose)
-        temp = 10.0
+        temp = 2.0
         lamb = 0.5
-        label = 'student_mlp_%d_%d_lambda%s_temp%s' % (512, args.epochs, str(lamb), str(temp))
+        label = '10student_mlp_%d_%d_lambda%s_temp%s' % (32, args.epochs, str(lamb), str(temp))
 
-        train_student(model,label,training_data, teacher_model_path='bin/cnn_64_128_1024_30model.h5',
+        train_student(model,label,training_data, teacher_model_path=args.teacher,
                       epochs=args.epochs, temp=temp, lambda_weight=lamb)
     else:
         print('Unknown --model parameter (must be one of these: cnn/mlp/student)!')
