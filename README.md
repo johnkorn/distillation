@@ -1,6 +1,6 @@
 ## Knowledge distillation experiments
 
-###How to run the code
+### How to run the code
 
 Dependencies: Keras, Tensorflow, Numpy
 
