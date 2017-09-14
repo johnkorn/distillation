@@ -52,8 +52,8 @@ def train(model, model_label, training_data, batch_size=256, epochs=10):
 
 def train_student(model, model_label, training_data, teacher_model_path,
                   logits_paths=('train_logits.npy', 'test_logits.npy'),
-                  batch_size=256, epochs=10):
-    temperature = 5.0
+                  batch_size=256, epochs=10, temp=5.0, lambda_weight=0.1):
+    temperature = temp
     (x_train, y_train), (x_test, y_test), mapping, nb_classes = training_data
 
     # convert class vectors to binary class matrices
@@ -104,7 +104,7 @@ def train_student(model, model_label, training_data, teacher_model_path,
         return lambda_const * logloss(y_true, y_pred) + logloss(y_soft, y_pred_soft)
 
     # For testing use usual output probabilities (without temperature)
-    def accuracy(y_true, y_pred):
+    def acc(y_true, y_pred):
         y_true = y_true[:, :nb_classes]
         y_pred = y_pred[:, :nb_classes]
         return categorical_accuracy(y_true, y_pred)
@@ -121,13 +121,13 @@ def train_student(model, model_label, training_data, teacher_model_path,
         y_pred_soft = y_pred[:, nb_classes:]
         return logloss(y_soft, y_pred_soft)
 
-    lambda_const = 0.7
+    lambda_const = lambda_weight
 
     model.compile(
         #optimizer=optimizers.SGD(lr=1e-1, momentum=0.9, nesterov=True),
         optimizer='adadelta',
         loss=lambda y_true, y_pred: knowledge_distillation_loss(y_true, y_pred, lambda_const),
-        metrics=[accuracy, categorical_crossentropy, soft_logloss]
+        metrics=[acc] #[acc, categorical_crossentropy, soft_logloss]
     )
 
     STAMP = model_label
@@ -147,7 +147,7 @@ def train_student(model, model_label, training_data, teacher_model_path,
               epochs=epochs,
               verbose=1,
               validation_data=(x_test, y_test),
-              callbacks=[early_stopping, model_checkpoint, reduce_lr])
+              callbacks=[early_stopping, model_checkpoint, reduce_lr, tensor_board])
 
     score = model.evaluate(x_test, y_test, verbose=0)
     print('Test score:', score[0])
@@ -163,14 +163,18 @@ def train_student(model, model_label, training_data, teacher_model_path,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(usage='A training program for classifying the EMNIST dataset')
     parser.add_argument('-f', '--file', type=str, help='Path .mat file data',
-                        default='data/matlab/emnist-letters.mat') #, required=True)
-    parser.add_argument('-m', '--model', type=str, help='model to be trained (cnn or mlp)',
-                        default='student')  # , required=True)
+                        required = True) #default='data/matlab/emnist-letters.mat')
+    parser.add_argument('-m', '--model', type=str, help='model to be trained (cnn, mlp or student).'
+                                                        ' If student is selected than path to pretrained teacher must be specified in --teacher parameter',
+                        required = True) #default='cnn')
+    parser.add_argument('-t', '--teacher', type=str, help='path to .h5 file with weight of pretrained teacher model'
+                                                          ' (e.g. bin/cnn_64_128_1024_30model.h5)',
+                        default='bin/cnn_64_128_1024_30model.h5')
 
     parser.add_argument('--width', type=int, default=28, help='Width of the images')
     parser.add_argument('--height', type=int, default=28, help='Height of the images')
     parser.add_argument('--max', type=int, default=None, help='Max amount of data to use')
-    parser.add_argument('--epochs', type=int, default=30, help='Number of epochs to train on')
+    parser.add_argument('--epochs', type=int, default=50, help='Number of epochs to train on')
     #parser.add_argument('--verbose', action='store_true', default=False, help='Enables verbose printing')
     args = parser.parse_args()
 
@@ -189,6 +193,13 @@ if __name__ == '__main__':
         model = build_mlp(training_data, width=args.width, height=args.height, verbose=True) #args.verbose)
         train(model, label, training_data, epochs=args.epochs)
     elif args.model=='student':
-        label = 'student_mlp_%d_%d' % (512, args.epochs)
         model = build_mlp(training_data, width=args.width, height=args.height, verbose=True)  # args.verbose)
-        train_student(model,label,training_data, teacher_model_path='bin/cnn_64_128_1024_30model.h5', epochs=args.epochs)
+        temp = 10.0
+        lamb = 0.5
+        label = 'student_mlp_%d_%d_lambda%s_temp%s' % (512, args.epochs, str(lamb), str(temp))
+
+        train_student(model,label,training_data, teacher_model_path='bin/cnn_64_128_1024_30model.h5',
+                      epochs=args.epochs, temp=temp, lambda_weight=lamb)
+    else:
+        print('Unknown --model parameter (must be one of these: cnn/mlp/student)!')
+
